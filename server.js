@@ -121,63 +121,45 @@ async function handleWebpayReturn(req, res) {
   const params = { ...req.query, ...req.body };
   const tokenWs = params.token_ws;
   const tokenCanceled = params.TBK_TOKEN;
+  const siteUrl = process.env.SITE_URL || "https://www.marcibuses.com";
 
   if (tokenCanceled && !tokenWs) {
-    return res.send(resultPage({
-      titulo: "Pago cancelado",
-      mensaje: "Cancelaste el pago en Webpay. Tu carrito sigue disponible en el sitio.",
-      ok: false
-    }));
+    return res.redirect(`${siteUrl}/checkout-retorno.html?status=cancelado`);
   }
   if (!tokenWs) {
-    return res.send(resultPage({
-      titulo: "No se encontró información de pago",
-      mensaje: "Vuelve al sitio e intenta nuevamente.",
-      ok: false
-    }));
+    return res.redirect(`${siteUrl}/checkout-retorno.html?status=error`);
   }
 
   try {
     const tx = getWebpayTransaction();
-  let result;
-try {
-        result = await tx.commit(tokenWs);
-      } catch (commitErr) {
-        console.error('Commit falló, consultando estado real:', commitErr.message);
-        let intentos = 0;
-        while (intentos < 3) {
-          try {
-            result = await tx.status(tokenWs);
-            break;
-          } catch (statusErr) {
-            intentos++;
-            console.error(`Status también falló (intento ${intentos}):`, statusErr.message);
-            if (intentos === 3) throw statusErr;
-            await new Promise(r => setTimeout(r, 1500));
-          }
+    let result;
+    try {
+      result = await tx.commit(tokenWs);
+    } catch (commitErr) {
+      console.error('Commit falló, consultando estado real:', commitErr.message);
+      let intentos = 0;
+      while (intentos < 3) {
+        try {
+          result = await tx.status(tokenWs);
+          break;
+        } catch (statusErr) {
+          intentos++;
+          console.error(`Status también falló (intento ${intentos}):`, statusErr.message);
+          if (intentos === 3) throw statusErr;
+          await new Promise(r => setTimeout(r, 1500));
         }
       }
+    }
 
     const approved = result.response_code === 0 || result.status === "AUTHORIZED";
     if (approved) {
-      return res.send(resultPage({
-        titulo: "¡Pago exitoso!",
-        mensaje: `Tu reserva quedó confirmada${result.buy_order ? ` (orden ${result.buy_order})` : ""}. Te enviaremos la confirmación por email.`,
-        ok: true
-      }));
+      const order = result.buy_order ? `&order=${encodeURIComponent(result.buy_order)}` : "";
+      return res.redirect(`${siteUrl}/checkout-retorno.html?status=aprobado${order}`);
     }
-    return res.send(resultPage({
-      titulo: "El pago no se pudo completar",
-      mensaje: "Intenta nuevamente o contáctanos por WhatsApp.",
-      ok: false
-    }));
+    return res.redirect(`${siteUrl}/checkout-retorno.html?status=rechazado`);
   } catch (err) {
     console.error("Error confirmando transacción Webpay:", err);
-    return res.send(resultPage({
-      titulo: "Error al confirmar el pago",
-      mensaje: "Si el dinero fue descontado, contáctanos y lo verificamos manualmente.",
-      ok: false
-    }));
+    return res.redirect(`${siteUrl}/checkout-retorno.html?status=error`);
   }
 }
 app.post("/webpay/return", handleWebpayReturn);
