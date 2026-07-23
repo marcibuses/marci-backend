@@ -139,7 +139,13 @@ async function handleWebpayReturn(req, res) {
 
   try {
     const tx = getWebpayTransaction();
-    const result = await tx.commit(tokenWs);
+  let result;
+try {
+  result = await tx.commit(tokenWs);
+} catch (commitErr) {
+  console.error('Commit falló, consultando estado real:', commitErr.message);
+  result = await tx.status(tokenWs);
+}
 
     const approved = result.response_code === 0 || result.status === "AUTHORIZED";
     if (approved) {
