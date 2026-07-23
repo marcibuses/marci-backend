@@ -141,11 +141,22 @@ async function handleWebpayReturn(req, res) {
     const tx = getWebpayTransaction();
   let result;
 try {
-  result = await tx.commit(tokenWs);
-} catch (commitErr) {
-  console.error('Commit falló, consultando estado real:', commitErr.message);
-  result = await tx.status(tokenWs);
-}
+        result = await tx.commit(tokenWs);
+      } catch (commitErr) {
+        console.error('Commit falló, consultando estado real:', commitErr.message);
+        let intentos = 0;
+        while (intentos < 3) {
+          try {
+            result = await tx.status(tokenWs);
+            break;
+          } catch (statusErr) {
+            intentos++;
+            console.error(`Status también falló (intento ${intentos}):`, statusErr.message);
+            if (intentos === 3) throw statusErr;
+            await new Promise(r => setTimeout(r, 1500));
+          }
+        }
+      }
 
     const approved = result.response_code === 0 || result.status === "AUTHORIZED";
     if (approved) {
