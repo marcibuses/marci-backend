@@ -69,7 +69,7 @@ app.post("/api/webpay/create", async (req, res) => {
 
     const tx = getWebpayTransaction();
     const response = await tx.create(buyOrder, sessionId, amount, returnUrl);
-
+    console.log("Token generado:", response.token, "| Orden:", buyOrder);
     res.json({ url: response.url, token: response.token });
   } catch (err) {
     console.error("Error creando transacción Webpay:", err);
