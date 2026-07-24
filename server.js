@@ -14,6 +14,7 @@ const {
 } = require("transbank-sdk");
 
 const app = express();
+const processedTokens = new Map();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -130,6 +131,12 @@ async function handleWebpayReturn(req, res) {
     return res.redirect(`${siteUrl}/checkout-retorno.html?status=error`);
   }
 
+  // Si ya procesamos este token antes, usamos el resultado guardado
+  if (processedTokens.has(tokenWs)) {
+    const cached = processedTokens.get(tokenWs);
+    return res.redirect(cached);
+  }
+
   try {
     const tx = getWebpayTransaction();
     let result;
@@ -152,14 +159,21 @@ async function handleWebpayReturn(req, res) {
     }
 
     const approved = result.response_code === 0 || result.status === "AUTHORIZED";
+    let redirectUrl;
     if (approved) {
       const order = result.buy_order ? `&order=${encodeURIComponent(result.buy_order)}` : "";
-      return res.redirect(`${siteUrl}/checkout-retorno.html?status=aprobado${order}`);
+      redirectUrl = `${siteUrl}/checkout-retorno.html?status=aprobado${order}`;
+    } else {
+      redirectUrl = `${siteUrl}/checkout-retorno.html?status=rechazado`;
     }
-    return res.redirect(`${siteUrl}/checkout-retorno.html?status=rechazado`);
+
+    processedTokens.set(tokenWs, redirectUrl);
+    return res.redirect(redirectUrl);
   } catch (err) {
     console.error("Error confirmando transacción Webpay:", err);
-    return res.redirect(`${siteUrl}/checkout-retorno.html?status=error`);
+    const redirectUrl = `${siteUrl}/checkout-retorno.html?status=error`;
+    processedTokens.set(tokenWs, redirectUrl);
+    return res.redirect(redirectUrl);
   }
 }
 app.post("/webpay/return", handleWebpayReturn);
