@@ -26,7 +26,7 @@ const EVENTS = {
   "bts-world-tour-arirang": { title: "BTS World Tour Arirang — Estadio Nacional", price: 9990 },
   "jamiroquai-claro-arena": { title: "Jamiroquai — Claro Arena", price: 10990 },
   "slayer-reign-in-blood": { title: "Slayer: Reign in Blood — Santa Laura USEK", price: 9990 },
-  "rosalia-lux-tour": { title: "Rosalía: LUX Tour 2026 — Movistar Arena", price: 9990 },
+  "prueba-transbank-50": { title: "Producto de prueba — validación de pago", price: 50 },
 };
 
 function getWebpayTransaction() {
